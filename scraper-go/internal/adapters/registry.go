@@ -4,9 +4,11 @@ import (
 	"context"
 	"log/slog"
 	"os"
+
+	"github.com/redis/go-redis/v9"
 )
 
-func GetAdapters() []Adapter {
+func GetAdapters(rdb *redis.Client) []Adapter {
 	var list []Adapter
 
 	list = append(list, NewLinkedIn())
@@ -20,7 +22,7 @@ func GetAdapters() []Adapter {
 	list = append(list, NewTheMuse())
 
 	if apiKey := os.Getenv("JOOBLE_API_KEY"); apiKey != "" {
-		list = append(list, NewJooble(apiKey))
+		list = append(list, NewJooble(apiKey, rdb))
 	} else {
 		slog.Warn("JOOBLE_API_KEY não configurada, adapter ignorado")
 	}

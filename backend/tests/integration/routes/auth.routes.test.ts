@@ -1,0 +1,503 @@
+import request from "supertest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// ── AuthService mock ──────────────────────────────────────────────────────────
+
+const mockAuthService = vi.hoisted(() => ({
+  getAuthUrl: vi.fn(),
+  handleCallback: vi.fn(),
+}));
+
+vi.mock("../../../src/modules/auth/auth.service", () => ({
+  AuthService: vi.fn(() => mockAuthService),
+}));
+
+// ── CredentialsService mock ───────────────────────────────────────────────────
+
+const mockCredentialsService = vi.hoisted(() => ({
+  register: vi.fn(),
+  login: vi.fn(),
+}));
+
+vi.mock("../../../src/modules/auth/credentials.service", () => ({
+  CredentialsService: vi.fn(() => mockCredentialsService),
+}));
+
+// ── iron-session ──────────────────────────────────────────────────────────────
+// AuthController chama getIronSession diretamente.
+// CredentialsController usa req.session injetado pelo withSession middleware.
+// Mockar iron-session cobre ambos os casos.
+
+vi.mock("iron-session", () => ({
+  getIronSession: vi.fn(),
+}));
+
+import { getIronSession } from "iron-session";
+import { createJobsApiApp } from "../../../src/app";
+
+// ── Fixtures ──────────────────────────────────────────────────────────────────
+
+const fixtureOAuthSession = {
+  userId: undefined as string | undefined,
+  oauth_state: "valid-state-abc123",
+  save: vi.fn().mockResolvedValue(undefined),
+  destroy: vi.fn().mockResolvedValue(undefined),
+};
+
+const fixtureCredentialsSession = {
+  userId: undefined as string | undefined,
+  save: vi.fn().mockResolvedValue(undefined),
+  destroy: vi.fn().mockResolvedValue(undefined),
+};
+
+const fixtureUser = {
+  id: "user-1",
+  email: "user@example.com",
+  username: "usertest",
+  displayName: "User Test",
+};
+
+const registerPayload = {
+  email: "novo@example.com",
+  password: "Senha@1234",
+  name: "Novo Usuario",
+};
+
+const loginPayload = {
+  email: "user@example.com",
+  password: "Senha@1234",
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("Integration - Auth Routes", () => {
+  let app: ReturnType<typeof createJobsApiApp>;
+  const BASE = "/api/auth";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    // Sessão padrão para rotas OAuth (AuthController)
+    vi.mocked(getIronSession).mockResolvedValue({
+      ...fixtureOAuthSession,
+    } as any);
+
+    // Defaults do AuthService
+    mockAuthService.getAuthUrl.mockResolvedValue(
+      "https://github.com/login/oauth/authorize?state=valid-state-abc123",
+    );
+    mockAuthService.handleCallback.mockResolvedValue({
+      user: fixtureUser,
+      session: { userId: fixtureUser.id },
+    });
+
+    // Defaults do CredentialsService
+    mockCredentialsService.register.mockResolvedValue({
+      user: fixtureUser,
+      session: { userId: fixtureUser.id },
+    });
+    mockCredentialsService.login.mockResolvedValue({
+      user: fixtureUser,
+      session: { userId: fixtureUser.id },
+    });
+
+    app = createJobsApiApp();
+  });
+
+  // ── GET /:provider/url ────────────────────────────────────────────────────
+
+  describe("GET /:provider/url", () => {
+    it("retorna 200 e url para github", async () => {
+      const res = await request(app).get(`${BASE}/github/url`).expect(200);
+
+      expect(res.body).toHaveProperty("url");
+      expect(res.body.url).toContain("github.com");
+    });
+
+    it("retorna 200 e url para google", async () => {
+      mockAuthService.getAuthUrl.mockResolvedValueOnce(
+        "https://accounts.google.com/o/oauth2/auth?state=abc",
+      );
+
+      const res = await request(app).get(`${BASE}/google/url`).expect(200);
+
+      expect(res.body.url).toContain("google.com");
+    });
+
+    it("retorna 200 e url para linkedin", async () => {
+      mockAuthService.getAuthUrl.mockResolvedValueOnce(
+        "https://www.linkedin.com/oauth/v2/authorization?state=abc",
+      );
+
+      const res = await request(app).get(`${BASE}/linkedin/url`).expect(200);
+
+      expect(res.body.url).toContain("linkedin.com");
+    });
+
+    it("salva oauth_state na sessão antes de retornar a url", async () => {
+      // getIronSession é chamado duas vezes: pelo withSession (app.use) e pelo
+      // AuthController.getUrl diretamente. mockResolvedValue cobre ambas as chamadas.
+      const session = {
+        oauth_state: undefined as string | undefined,
+        save: vi.fn().mockResolvedValue(undefined),
+      };
+      vi.mocked(getIronSession).mockResolvedValue(session as any);
+
+      await request(app).get(`${BASE}/github/url`).expect(200);
+
+      expect(session.save).toHaveBeenCalled();
+      expect(typeof session.oauth_state).toBe("string");
+      expect(session.oauth_state).toHaveLength(32);
+    });
+
+    it("retorna 400 para provider inválido (ZodError)", async () => {
+      const res = await request(app).get(`${BASE}/twitter/url`).expect(400);
+
+      expect(res.body).toHaveProperty("error", "Provider inválido");
+    });
+
+    it("retorna 400 quando getAuthUrl lança erro", async () => {
+      mockAuthService.getAuthUrl.mockRejectedValueOnce(
+        new Error("OAuth config ausente"),
+      );
+
+      const res = await request(app).get(`${BASE}/github/url`).expect(400);
+
+      expect(res.body).toHaveProperty("error", "OAuth config ausente");
+    });
+  });
+
+  // ── GET /:provider/callback ───────────────────────────────────────────────
+
+  describe("GET /:provider/callback", () => {
+    it("retorna 200 e dados do usuario em callback valido", async () => {
+      const res = await request(app)
+        .get(`${BASE}/github/callback?code=abc123&state=valid-state-abc123`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty("user");
+      expect(res.body.user).toHaveProperty("email", "user@example.com");
+    });
+
+    it("chama handleCallback com os params corretos", async () => {
+      await request(app).get(
+        `${BASE}/github/callback?code=abc123&state=valid-state-abc123`,
+      );
+
+      expect(mockAuthService.handleCallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "github",
+          code: "abc123",
+          state: "valid-state-abc123",
+        }),
+      );
+    });
+
+    it("apaga oauth_state da sessao apos callback bem-sucedido", async () => {
+      const session = {
+        oauth_state: "valid-state-abc123",
+        save: vi.fn().mockResolvedValue(undefined),
+      };
+      vi.mocked(getIronSession).mockResolvedValue(session as any);
+
+      await request(app)
+        .get(`${BASE}/github/callback?code=abc123&state=valid-state-abc123`)
+        .expect(200);
+
+      expect(session.oauth_state).toBeUndefined();
+      expect(session.save).toHaveBeenCalled();
+    });
+
+    it("retorna 400 quando oauth_state da sessao esta ausente", async () => {
+      vi.mocked(getIronSession).mockResolvedValue({
+        oauth_state: undefined,
+        save: vi.fn(),
+      } as any);
+
+      const res = await request(app)
+        .get(`${BASE}/github/callback?code=abc123&state=valid-state-abc123`)
+        .expect(400);
+
+      expect(res.body).toHaveProperty("error", "OAuth state ausente");
+    });
+
+    it("retorna 400 quando state do query nao confere com o da sessao", async () => {
+      vi.mocked(getIronSession).mockResolvedValue({
+        oauth_state: "outro-state",
+        save: vi.fn(),
+      } as any);
+
+      const res = await request(app)
+        .get(`${BASE}/github/callback?code=abc123&state=state-errado`)
+        .expect(400);
+
+      expect(res.body).toHaveProperty("error", "OAuth state inválido");
+    });
+
+    it("retorna 400 para provider invalido nos params (ZodError)", async () => {
+      vi.mocked(getIronSession).mockResolvedValue({
+        oauth_state: "valid-state-abc123",
+        save: vi.fn(),
+      } as any);
+
+      const res = await request(app)
+        .get(`${BASE}/twitter/callback?code=abc&state=valid-state-abc123`)
+        .expect(400);
+
+      expect(res.body).toHaveProperty(
+        "error",
+        "Parâmetros de callback inválidos",
+      );
+    });
+
+    it("retorna 400 quando code esta ausente (ZodError)", async () => {
+      vi.mocked(getIronSession).mockResolvedValue({
+        oauth_state: "valid-state-abc123",
+        save: vi.fn(),
+      } as any);
+
+      const res = await request(app)
+        .get(`${BASE}/github/callback?state=valid-state-abc123`)
+        .expect(400);
+
+      expect(res.body).toHaveProperty("error");
+    });
+
+    it("retorna 500 quando handleCallback lanca erro", async () => {
+      mockAuthService.handleCallback.mockRejectedValueOnce(
+        new Error("upstream OAuth error"),
+      );
+
+      const res = await request(app)
+        .get(`${BASE}/github/callback?code=abc123&state=valid-state-abc123`)
+        .expect(500);
+
+      expect(res.body).toHaveProperty("error", "upstream OAuth error");
+    });
+  });
+
+  // ── POST /register ────────────────────────────────────────────────────────
+
+  describe("POST /register", () => {
+    it("cria usuario e retorna 201", async () => {
+      // CredentialsController usa req.session — injetado pelo withSession mock
+      vi.mocked(getIronSession).mockResolvedValue(
+        fixtureCredentialsSession as any,
+      );
+
+      const res = await request(app)
+        .post(`${BASE}/register`)
+        .send(registerPayload)
+        .expect(201);
+
+      expect(res.body).toHaveProperty("user");
+      expect(res.body.user).toHaveProperty("email", fixtureUser.email);
+    });
+
+    it("chama register com email, password e name", async () => {
+      vi.mocked(getIronSession).mockResolvedValue(
+        fixtureCredentialsSession as any,
+      );
+
+      await request(app).post(`${BASE}/register`).send(registerPayload);
+
+      expect(mockCredentialsService.register).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: registerPayload.email,
+          password: registerPayload.password,
+          name: registerPayload.name,
+        }),
+      );
+    });
+
+    it("retorna 400 para email invalido (ZodError)", async () => {
+      vi.mocked(getIronSession).mockResolvedValue(
+        fixtureCredentialsSession as any,
+      );
+
+      const res = await request(app)
+        .post(`${BASE}/register`)
+        .send({ ...registerPayload, email: "nao-e-email" })
+        .expect(400);
+
+      expect(res.body).toHaveProperty("error");
+    });
+
+    it("retorna 400 para senha curta (ZodError)", async () => {
+      vi.mocked(getIronSession).mockResolvedValue(
+        fixtureCredentialsSession as any,
+      );
+
+      await request(app)
+        .post(`${BASE}/register`)
+        .send({ ...registerPayload, password: "123" })
+        .expect(400);
+    });
+
+    it("retorna 409 quando email ja esta cadastrado", async () => {
+      vi.mocked(getIronSession).mockResolvedValue(
+        fixtureCredentialsSession as any,
+      );
+      mockCredentialsService.register.mockRejectedValueOnce(
+        new Error("Email já cadastrado"),
+      );
+
+      const res = await request(app)
+        .post(`${BASE}/register`)
+        .send(registerPayload)
+        .expect(409);
+
+      expect(res.body).toHaveProperty("error", "Email já cadastrado");
+    });
+
+    it("retorna 500 para erro inesperado no register", async () => {
+      vi.mocked(getIronSession).mockResolvedValue(
+        fixtureCredentialsSession as any,
+      );
+      mockCredentialsService.register.mockRejectedValueOnce(
+        new Error("db connection failed"),
+      );
+
+      await request(app)
+        .post(`${BASE}/register`)
+        .send(registerPayload)
+        .expect(500);
+    });
+  });
+
+  // ── POST /login ───────────────────────────────────────────────────────────
+
+  describe("POST /login", () => {
+    it("autentica e retorna 200 com user e session", async () => {
+      vi.mocked(getIronSession).mockResolvedValue(
+        fixtureCredentialsSession as any,
+      );
+
+      const res = await request(app)
+        .post(`${BASE}/login`)
+        .send(loginPayload)
+        .expect(200);
+
+      expect(res.body).toHaveProperty("user");
+      expect(res.body.user).toHaveProperty("id", fixtureUser.id);
+    });
+
+    it("chama login com email e password corretos", async () => {
+      vi.mocked(getIronSession).mockResolvedValue(
+        fixtureCredentialsSession as any,
+      );
+
+      await request(app).post(`${BASE}/login`).send(loginPayload);
+
+      expect(mockCredentialsService.login).toHaveBeenCalledWith(
+        expect.objectContaining(loginPayload),
+      );
+    });
+
+    it("retorna 400 para email invalido (ZodError)", async () => {
+      vi.mocked(getIronSession).mockResolvedValue(
+        fixtureCredentialsSession as any,
+      );
+
+      await request(app)
+        .post(`${BASE}/login`)
+        .send({ email: "invalido", password: "Senha@1234" })
+        .expect(400);
+    });
+
+    it("retorna 400 para senha ausente (ZodError)", async () => {
+      vi.mocked(getIronSession).mockResolvedValue(
+        fixtureCredentialsSession as any,
+      );
+
+      await request(app)
+        .post(`${BASE}/login`)
+        .send({ email: "user@example.com" })
+        .expect(400);
+    });
+
+    it("retorna 401 para credenciais invalidas", async () => {
+      vi.mocked(getIronSession).mockResolvedValue(
+        fixtureCredentialsSession as any,
+      );
+      mockCredentialsService.login.mockRejectedValueOnce(
+        new Error("Credenciais inválidas"),
+      );
+
+      const res = await request(app)
+        .post(`${BASE}/login`)
+        .send(loginPayload)
+        .expect(401);
+
+      expect(res.body).toHaveProperty("error", "Credenciais inválidas");
+    });
+
+    it("retorna 500 para erro inesperado no login", async () => {
+      vi.mocked(getIronSession).mockResolvedValue(
+        fixtureCredentialsSession as any,
+      );
+      mockCredentialsService.login.mockRejectedValueOnce(
+        new Error("db timeout"),
+      );
+
+      await request(app).post(`${BASE}/login`).send(loginPayload).expect(500);
+    });
+  });
+
+  // ── POST /logout ──────────────────────────────────────────────────────────
+
+  describe("POST /logout", () => {
+    it("destroi a sessao e retorna ok: true", async () => {
+      const session = {
+        userId: "user-1",
+        destroy: vi.fn().mockResolvedValue(undefined),
+        save: vi.fn(),
+      };
+      vi.mocked(getIronSession).mockResolvedValue(session as any);
+
+      const res = await request(app).post(`${BASE}/logout`).expect(200);
+
+      expect(res.body).toEqual({ ok: true });
+      expect(session.destroy).toHaveBeenCalled();
+    });
+
+    it("funciona mesmo sem usuario autenticado", async () => {
+      const session = {
+        userId: undefined,
+        destroy: vi.fn().mockResolvedValue(undefined),
+        save: vi.fn(),
+      };
+      vi.mocked(getIronSession).mockResolvedValue(session as any);
+
+      const res = await request(app).post(`${BASE}/logout`).expect(200);
+
+      expect(res.body).toEqual({ ok: true });
+    });
+  });
+
+  // ── GET /me ───────────────────────────────────────────────────────────────
+
+  describe("GET /me", () => {
+    it("retorna userId quando autenticado", async () => {
+      vi.mocked(getIronSession).mockResolvedValue({
+        userId: "user-1",
+        save: vi.fn(),
+      } as any);
+
+      const res = await request(app).get(`${BASE}/me`).expect(200);
+
+      expect(res.body).toEqual({ userId: "user-1" });
+    });
+
+    it("retorna 401 quando nao autenticado", async () => {
+      vi.mocked(getIronSession).mockResolvedValue({
+        userId: undefined,
+        save: vi.fn(),
+      } as any);
+
+      const res = await request(app).get(`${BASE}/me`).expect(401);
+
+      expect(res.body).toHaveProperty("error", "Não autenticado");
+    });
+  });
+});

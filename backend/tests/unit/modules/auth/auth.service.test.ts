@@ -95,13 +95,11 @@ describe("AuthService", () => {
   });
 
   describe("createSession", () => {
-    it("returns session with userId and accessToken", async () => {
+    it("returns session with userId", async () => {
       const session = await service.createSession({ id: "uuid-123" });
 
-      expect(session).toEqual({
-        accessToken: "jwt-aqui",
-        userId: "uuid-123",
-      });
+      // O código-fonte retorna apenas { userId } — sem accessToken
+      expect(session).toEqual({ userId: "uuid-123" });
     });
   });
 
@@ -113,10 +111,8 @@ describe("AuthService", () => {
       const result = await service.handleCallback(validCallbackParams);
 
       expect(result.user).toEqual(mockUser);
-      expect(result.session).toEqual({
-        accessToken: "jwt-aqui",
-        userId: "uuid-123",
-      });
+      // Sessão retorna apenas userId, conforme implementação atual
+      expect(result.session).toEqual({ userId: "uuid-123" });
     });
 
     it("throws when exchangeCode fails", async () => {

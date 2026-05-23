@@ -8,17 +8,14 @@ const CONFIG_ENV_KEYS = [
   "MAX_PAGES_PER_KEYWORD",
   "VIEWPORT_WIDTH",
   "VIEWPORT_HEIGHT",
-  "OUTPUT_FILE",
-  "PDF_FILE",
   "SEARCH_LOCATION",
   "SEARCH_GEO_ID",
   "SEARCH_LANGUAGE",
   "REMOTE_ONLY",
   "JOB_TYPES",
   "TIME_FILTER",
-  "SEARCH_KEYWORDS",
-  "KEYWORDS_FILE_PATH",
-  "KEYWORDS_STORAGE_MODE",
+  "DATABASE_URL",
+  "VALKEY_URL",
 ];
 
 describe("getConfig", () => {
@@ -32,35 +29,15 @@ describe("getConfig", () => {
     vi.unstubAllEnvs();
   });
 
-  it("usa caminhos padrao em output/ para Excel e PDF", () => {
+  it("retorna searchLocation padrão quando env não definido", () => {
     const config = getConfig();
-    expect(config.outputFile).toBe("output/vagas_remoto.xlsx");
-    expect(config.pdfFile).toBe("output/vagas_remoto.pdf");
+    expect(config.searchLocation).toBe("Brasil");
   });
 
-  it("permite sobrescrever arquivos de saida via env", () => {
-    vi.stubEnv("OUTPUT_FILE", "custom/out.xlsx");
-    vi.stubEnv("PDF_FILE", "custom/out.pdf");
+  it("permite sobrescrever searchLocation via env", () => {
+    vi.stubEnv("SEARCH_LOCATION", "Portugal");
     const config = getConfig();
-    expect(config.outputFile).toBe("custom/out.xlsx");
-    expect(config.pdfFile).toBe("custom/out.pdf");
-  });
-
-  it("parseia SEARCH_KEYWORDS em lista", () => {
-    vi.stubEnv("SEARCH_KEYWORDS", "Java,Spring,RabbitMQ,Docker");
-
-    const config = getConfig();
-    expect(config.keywords).toEqual(["Java", "Spring", "RabbitMQ", "Docker"]);
-  });
-
-  it("ignora o modo legado de arquivo e usa SEARCH_KEYWORDS como fallback local", () => {
-    vi.stubEnv("KEYWORDS_FILE_PATH", "/tmp/legacy-environment.json");
-    vi.stubEnv("KEYWORDS_STORAGE_MODE", "file");
-    vi.stubEnv("SEARCH_KEYWORDS", "Java,Spring,RabbitMQ,Docker");
-
-    const config = getConfig();
-    expect(config.keywords).toEqual(["Java", "Spring", "RabbitMQ", "Docker"]);
-    expect(config.keywordsStorageMode).toBe("redis");
+    expect(config.searchLocation).toBe("Portugal");
   });
 
   it("rejeita TIME_FILTER invalido e usa fallback", () => {
@@ -110,18 +87,26 @@ describe("getConfig", () => {
     expect(config.maxPagesPerKeyword).toBe(5);
   });
 
-  it("retorna keywords padrao quando lista informada e vazia", () => {
-    vi.stubEnv("SEARCH_KEYWORDS", " ,  , ");
-
+  it("retorna viewport padrão quando env não definido", () => {
     const config = getConfig();
-    expect(config.keywords.length).toBeGreaterThan(0);
-    expect(config.keywords).toContain("Java");
+    expect(config.viewport).toEqual({ width: 1280, height: 800 });
   });
 
-  it("retorna keywords padrao quando SEARCH_KEYWORDS não existe", () => {
+  it("retorna searchGeoId e searchLanguage padrão", () => {
     const config = getConfig();
+    expect(config.searchGeoId).toBe("106057199");
+    expect(config.searchLanguage).toBe("pt");
+  });
 
-    expect(config.keywords).toContain("Java");
-    expect(config.keywordsStorageMode).toBe("redis");
+  it("retorna remoteOnly true e jobTypes padrão", () => {
+    const config = getConfig();
+    expect(config.remoteOnly).toBe(true);
+    expect(config.jobTypes).toBe("C,F");
+  });
+
+  it("retorna databaseUrl e valkeyUrl vazios quando env não definido", () => {
+    const config = getConfig();
+    expect(config.databaseUrl).toBe("");
+    expect(config.valkeyUrl).toBe("");
   });
 });

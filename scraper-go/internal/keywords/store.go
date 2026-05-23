@@ -2,80 +2,50 @@ package keywords
 
 import (
 	"context"
-	"encoding/json"
-	"os"
+	"log/slog"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/Benevanio/Jobs_Scraper_Global/scraper-go/internal/cache"
 )
 
+// cacheKey é a chave fixa no Valkey para as keywords do scraper.
+// Namespace "scraper:" é aplicado internamente pelo cache.Cache.
+const cacheKey = "keywords"
+
 type Store struct {
-	redis *redis.Client
+	cache cache.Cache
 }
 
-func NewStore(redis *redis.Client) *Store {
-	return &Store{
-		redis: redis,
-	}
+func NewStore(c cache.Cache) *Store {
+	return &Store{cache: c}
 }
 
-func (s *Store) redisKey() string {
-	key := os.Getenv("KEYWORDS_REDIS_KEY")
-
-	if key != "" {
-		return key
-	}
-
-	prefix := os.Getenv("REDIS_KEY_PREFIX")
-
-	if prefix == "" {
-		prefix = "vagas-full"
-	}
-
-	return prefix + ":keywords"
-}
-
-func (s *Store) Load(
-	ctx context.Context,
-) ([]string, error) {
-
+// Load retorna as keywords do Valkey. Se a chave não existir ou ocorrer
+// qualquer erro, retorna o fallback do keywords.json sem propagar o erro —
+// o scraper nunca deve parar por falha de cache.
+func (s *Store) Load(ctx context.Context) ([]string, error) {
 	fallback := LoadDefaultKeywords()
 
-	raw, err := s.redis.Get(ctx, s.redisKey()).Result()
-
-	if err == redis.Nil {
-		return fallback, nil
-	}
-
+	raw, found, err := cache.GetAs[[]string](s.cache, ctx, cacheKey)
 	if err != nil {
-		return fallback, err
+		slog.Warn("keywords.Store.Load: cache read failed, using defaults", "error", err)
+		return fallback, nil
 	}
-
-	var keywords []string
-
-	if err := json.Unmarshal([]byte(raw), &keywords); err != nil {
+	if !found {
 		return fallback, nil
 	}
 
-	return NormalizeKeywords(keywords), nil
+	return NormalizeKeywords(raw), nil
 }
 
-func (s *Store) Save(
-	ctx context.Context,
-	keywords []string,
-) error {
-
+// Save persiste as keywords no Valkey sem expiração (TTL=0).
+// Keywords são configuração, não cache — não devem expirar automaticamente.
+func (s *Store) Save(ctx context.Context, keywords []string) error {
 	normalized := NormalizeKeywords(keywords)
 
-	payload, err := json.Marshal(normalized)
-
-	if err != nil {
+	if err := s.cache.Set(ctx, cacheKey, normalized, 0); err != nil {
 		return err
 	}
 
-	return s.redis.Set(
-		ctx,
-		s.redisKey(),
-		payload,
-		0,
-	).Err()
+	slog.Info("keywords.Store.Save: keywords saved", "count", len(normalized))
+	return nil
 }

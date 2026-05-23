@@ -1,7 +1,9 @@
 package cache
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -9,6 +11,10 @@ import (
 type memoryEntry struct {
 	Value     []byte
 	ExpiresAt time.Time
+}
+
+func (e memoryEntry) expired() bool {
+	return time.Now().After(e.ExpiresAt)
 }
 
 type MemoryCache struct {
@@ -22,44 +28,32 @@ func NewMemoryCache() *MemoryCache {
 	}
 }
 
-func (m *MemoryCache) Get(
-	key string,
-	target any,
-) (bool, error) {
+func (m *MemoryCache) Get(_ context.Context, key string, target any) (bool, error) {
 	m.mu.RLock()
-	entry, exists := m.store[key]
+	entry, exists := m.store[prefixed(key)]
 	m.mu.RUnlock()
 
-	if !exists {
-		return false, nil
-	}
-
-	if time.Now().After(entry.ExpiresAt) {
-		_ = m.Delete(key)
+	if !exists || entry.expired() {
 		return false, nil
 	}
 
 	if err := json.Unmarshal(entry.Value, target); err != nil {
-		return false, err
+		return false, fmt.Errorf("cache.Get %q: unmarshal: %w", key, err)
 	}
 
 	return true, nil
 }
 
-func (m *MemoryCache) Set(
-	key string,
-	value any,
-	ttl time.Duration,
-) error {
+func (m *MemoryCache) Set(_ context.Context, key string, value any, ttl time.Duration) error {
 	payload, err := json.Marshal(value)
 	if err != nil {
-		return err
+		return fmt.Errorf("cache.Set %q: marshal: %w", key, err)
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.store[key] = memoryEntry{
+	m.store[prefixed(key)] = memoryEntry{
 		Value:     payload,
 		ExpiresAt: time.Now().Add(ttl),
 	}
@@ -67,20 +61,38 @@ func (m *MemoryCache) Set(
 	return nil
 }
 
-func (m *MemoryCache) Delete(key string) error {
+func (m *MemoryCache) Delete(_ context.Context, key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	delete(m.store, key)
+	delete(m.store, prefixed(key))
 
 	return nil
 }
 
-func (m *MemoryCache) Clear() error {
+func (m *MemoryCache) SetNX(_ context.Context, key string, value any, ttl time.Duration) (bool, error) {
+	payload, err := json.Marshal(value)
+	if err != nil {
+		return false, fmt.Errorf("cache.SetNX %q: marshal: %w", key, err)
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.store = make(map[string]memoryEntry)
+	pKey := prefixed(key)
 
-	return nil
+	if entry, exists := m.store[pKey]; exists && !entry.expired() {
+		return false, nil
+	}
+
+	m.store[pKey] = memoryEntry{
+		Value:     payload,
+		ExpiresAt: time.Now().Add(ttl),
+	}
+
+	return true, nil
+}
+
+func (m *MemoryCache) Status() Status {
+	return Status{Provider: "memory"}
 }

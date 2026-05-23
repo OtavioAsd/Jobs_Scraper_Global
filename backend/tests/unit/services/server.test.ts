@@ -19,7 +19,8 @@ mocks.createJobsApiApp.mockReturnValue({
 
 vi.mock("dotenv/config", () => ({}));
 
-vi.mock("../../../src/jobsApiApp.js", () => ({
+// O server.ts importa de "./app" → ajustado para src/app.js
+vi.mock("../../../src/app.js", () => ({
   createJobsApiApp: mocks.createJobsApiApp,
 }));
 
@@ -50,6 +51,13 @@ describe("server entry", () => {
     vi.resetModules();
     vi.clearAllMocks();
     process.env.PORT = "3100";
+
+    // Re-aplicar o mock após resetModules
+    mocks.createJobsApiApp.mockReturnValue({
+      listen: mocks.listen,
+      use: mocks.use,
+      set: mocks.set,
+    });
   });
 
   it("inicializa app e chama listen", async () => {

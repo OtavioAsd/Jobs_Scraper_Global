@@ -8,6 +8,7 @@ import (
 
 	"github.com/Benevanio/Jobs_Scraper_Global/scraper-go/internal/adapters"
 	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
 )
 
 func loadEnv() {
@@ -29,10 +30,25 @@ func loadEnv() {
 	slog.Warn("arquivo .env não encontrado, usando variáveis do sistema")
 }
 
-func buildAdapters() []adapters.Adapter {
-	all := make([]adapters.Adapter, 0)
+func resolveInterfacesPath(filename string) string {
+	if v := os.Getenv("INTERFACES_DIR"); v != "" {
+		return v + "/" + filename
+	}
+	candidates := []string{
+		"internal/interfaces/" + filename,
+		"../internal/interfaces/" + filename,
+		"../../internal/interfaces/" + filename,
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return c
+		}
+	}
+	return "internal/interfaces/" + filename
+}
 
-	loadEnv()
+func buildAdapters(rdb *redis.Client) []adapters.Adapter {
+	all := make([]adapters.Adapter, 0)
 
 	all = append(all, adapters.NewLinkedIn())
 
@@ -65,32 +81,11 @@ func buildAdapters() []adapters.Adapter {
 		}
 	}
 
-	joobleKey := os.Getenv("JOOBLE_API_KEY")
-	if joobleKey != "" {
-		all = append(all, adapters.NewJooble(joobleKey))
+	if joobleKey := os.Getenv("JOOBLE_API_KEY"); joobleKey != "" {
+		all = append(all, adapters.NewJooble(joobleKey, rdb))
 	} else {
 		log.Println("AVISO: JOOBLE_API_KEY não encontrada")
 	}
 
 	return all
-}
-
-func resolveInterfacesPath(filename string) string {
-	if v := os.Getenv("INTERFACES_DIR"); v != "" {
-		return v + "/" + filename
-	}
-
-	candidates := []string{
-		"internal/interfaces/" + filename,
-		"../internal/interfaces/" + filename,
-		"../../internal/interfaces/" + filename,
-	}
-
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
-	}
-
-	return "internal/interfaces/" + filename
 }

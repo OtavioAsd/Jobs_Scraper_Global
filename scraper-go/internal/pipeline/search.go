@@ -2,7 +2,11 @@ package pipeline
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 
 	"github.com/Benevanio/Jobs_Scraper_Global/scraper-go/internal/cache"
 	"github.com/Benevanio/Jobs_Scraper_Global/scraper-go/internal/inflight"
@@ -16,32 +20,36 @@ type SearchResult struct {
 	FromCache bool         `json:"fromCache"`
 }
 
-var searchCache = cache.NewMemoryCache()
-
 func SearchJobs(
 	ctx context.Context,
+	c cache.Cache,
 	config SearchConfig,
 	ttl time.Duration,
+	rdb *redis.Client,
 ) (SearchResult, error) {
 	cacheKey := BuildCacheKey(config)
 
-	var cached SearchResult
-	if found, _ := searchCache.Get(cacheKey, &cached); found {
-		cached.FromCache = true
-		return cached, nil
+	if result, found, err := cache.GetAs[SearchResult](c, ctx, cacheKey); err != nil {
+		return SearchResult{}, fmt.Errorf("pipeline.SearchJobs: cache read: %w", err)
+	} else if found {
+		result.FromCache = true
+		return result, nil
 	}
 
 	return inflight.Do(cacheKey, func() (SearchResult, error) {
-		var cached SearchResult
-		if found, _ := searchCache.Get(cacheKey, &cached); found {
-			cached.FromCache = true
-			return cached, nil
+		if result, found, err := cache.GetAs[SearchResult](c, ctx, cacheKey); err != nil {
+			return SearchResult{}, fmt.Errorf("pipeline.SearchJobs: cache re-check: %w", err)
+		} else if found {
+			result.FromCache = true
+			return result, nil
 		}
 
-		jobs, err := ScrapeAllSources(ctx, config)
+		jobs, err := ScrapeAllSources(ctx, config, rdb)
 		if err != nil {
-			return SearchResult{}, err
+			return SearchResult{}, fmt.Errorf("pipeline.SearchJobs: scrape: %w", err)
 		}
+
+		IndexJobsInValkey(ctx, rdb, jobs, config.Keywords)
 
 		result := SearchResult{
 			Jobs:      jobs,
@@ -50,7 +58,13 @@ func SearchJobs(
 			FromCache: false,
 		}
 
-		_ = searchCache.Set(cacheKey, result, ttl)
+		if err := c.Set(ctx, cacheKey, result, ttl); err != nil {
+			slog.Error("pipeline.SearchJobs: cache write failed",
+				"key", cacheKey,
+				"error", err,
+			)
+		}
+
 		return result, nil
 	})
 }

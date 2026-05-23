@@ -6,28 +6,29 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/Benevanio/Jobs_Scraper_Global/scraper-go/internal/adapters"
+	"github.com/Benevanio/Jobs_Scraper_Global/scraper-go/internal/cache"
 	"github.com/Benevanio/Jobs_Scraper_Global/scraper-go/internal/keywords"
 	"github.com/Benevanio/Jobs_Scraper_Global/scraper-go/internal/models"
 	"github.com/Benevanio/Jobs_Scraper_Global/scraper-go/internal/pipeline"
 )
 
-func handleScrape(adapterList []adapters.Adapter, kwStore *keywords.Store) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+const (
+	scrapeTTL     = 10 * time.Minute
+	scrapeTimeout = 15 * time.Minute
+)
 
+func handleScrape(adapterList []adapters.Adapter, kwStore *keywords.Store, c cache.Cache, rdb *redis.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		var req models.ScrapeRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "invalid json body", http.StatusBadRequest)
 			return
 		}
 
-		// --- LÓGICA DE CARREGAMENTO AUTOMÁTICO ---
 		if len(req.Keywords) == 0 {
-			// Se o usuário não enviou keywords, carregamos do JSON/Redis
 			kws, err := kwStore.Load(r.Context())
 			if err != nil || len(kws) == 0 {
 				http.Error(w, "falha ao carregar keywords do sistema", http.StatusInternalServerError)
@@ -35,32 +36,45 @@ func handleScrape(adapterList []adapters.Adapter, kwStore *keywords.Store) http.
 			}
 			req.Keywords = kws
 		}
-		// ------------------------------------------
+
+		ctx, cancel := context.WithTimeout(r.Context(), scrapeTimeout)
+		defer cancel()
+
+		config := pipeline.SearchConfig{
+			Keywords:       req.Keywords,
+			SearchLocation: req.SearchLocation,
+			JobTypes:       req.JobTypes,
+			TimeFilter:     req.TimeFilter,
+			RemoteOnly:     req.RemoteOnly,
+		}
 
 		start := time.Now()
 
-		// Com 120 keywords, 5 minutos pode ser apertado, considere 10 se necessário
-		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
-		defer cancel()
+		result, err := pipeline.SearchJobs(ctx, c, config, scrapeTTL, rdb) // ← rdb aqui
+		if err != nil {
+			http.Error(w, "Erro ao buscar vagas.", http.StatusInternalServerError)
+			return
+		}
 
-		jobs := pipeline.Run(ctx, adapterList, req)
-
-		duration := time.Since(start)
-		printSummary(len(adapterList), req.Keywords, len(jobs), duration)
+		printSummary(len(adapterList), req.Keywords, result.Total, time.Since(start))
 
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Cache", cacheHeader(result.FromCache))
 		json.NewEncoder(w).Encode(models.ScrapeResponse{
-			Jobs:     jobs,
-			Total:    len(jobs),
-			CachedAt: time.Now().UTC().Format(time.RFC3339),
+			Jobs:     result.Jobs,
+			Total:    result.Total,
+			CachedAt: result.CachedAt.UTC().Format(time.RFC3339),
 		})
 	}
 }
 
-func handleHealth() http.HandlerFunc {
+func handleHealth(c cache.Cache) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+		json.NewEncoder(w).Encode(map[string]any{
+			"ok":    true,
+			"cache": c.Status().Provider,
+		})
 	}
 }
 
@@ -81,11 +95,6 @@ func handleGetKeywords(kwStore *keywords.Store) http.HandlerFunc {
 
 func handleSaveKeywords(kwStore *keywords.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
 		var body struct {
 			Keywords []string `json:"keywords"`
 		}
@@ -105,4 +114,11 @@ func handleSaveKeywords(kwStore *keywords.Store) http.HandlerFunc {
 			"keywords": body.Keywords,
 		})
 	}
+}
+
+func cacheHeader(fromCache bool) string {
+	if fromCache {
+		return "HIT"
+	}
+	return "MISS"
 }

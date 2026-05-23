@@ -7,39 +7,35 @@ import (
 )
 
 type keywordsFile struct {
-	KEYWORDS []string `json:"KEYWORDS"`
+	Keywords []string `json:"KEYWORDS"`
 }
 
+// LoadDefaultKeywords lê o keywords.json empacotado no binário.
+// Tenta o path do Docker primeiro, depois o path local de desenvolvimento.
+// Retorna slice vazio (nunca nil) se o arquivo não for encontrado.
 func LoadDefaultKeywords() []string {
-	// Agora que voltou para a pasta keywords:
 	paths := []string{
-		"/app/internal/keywords/keywords.json", // Caminho no Docker
-		"./internal/keywords/keywords.json",    // Caminho local
+		"/app/internal/keywords/keywords.json",
+		"./internal/keywords/keywords.json",
 	}
-
-	var data []byte
-	var err error
 
 	for _, p := range paths {
-		data, err = os.ReadFile(p)
-		if err == nil {
-			break
+		data, err := os.ReadFile(p)
+		if err != nil {
+			continue
 		}
-	}
 
-	if err != nil {
-		slog.Warn("Arquivo keywords.json não encontrado, usando .env ou lista vazia")
-		if env := os.Getenv("KEYWORDS"); env != "" {
-			return []string{env}
+		var parsed keywordsFile
+		if err := json.Unmarshal(data, &parsed); err != nil {
+			slog.Error("keywords: failed to parse keywords.json", "path", p, "error", err)
+			return []string{}
 		}
-		return []string{}
+
+		normalized := NormalizeKeywords(parsed.Keywords)
+		slog.Info("keywords: loaded from file", "path", p, "count", len(normalized))
+		return normalized
 	}
 
-	var parsed keywordsFile
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		slog.Error("Erro no unmarshal do JSON", "error", err)
-		return []string{}
-	}
-
-	return NormalizeKeywords(parsed.KEYWORDS)
+	slog.Warn("keywords: keywords.json not found in any path", "paths", paths)
+	return []string{}
 }

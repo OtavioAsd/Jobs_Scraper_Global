@@ -5,9 +5,13 @@ meta {
 }
 
 get {
-  url: {{base_url}}/jobs/search
+  url: {{base_url}}/jobs/search?keywords=java,node.js,react,angular
   body: none
   auth: inherit
+}
+
+params:query {
+  keywords: java,node.js,react,angular
 }
 
 settings {

@@ -5,8 +5,8 @@ import (
 	"log/slog"
 
 	"github.com/Benevanio/Jobs_Scraper_Global/scraper-go/internal/adapters"
-	"github.com/Benevanio/Jobs_Scraper_Global/scraper-go/internal/dedup"
 	"github.com/Benevanio/Jobs_Scraper_Global/scraper-go/internal/models"
+	"github.com/redis/go-redis/v9"
 )
 
 type SearchConfig struct {
@@ -15,15 +15,17 @@ type SearchConfig struct {
 	JobTypes       string   `json:"jobTypes"`
 	TimeFilter     string   `json:"timeFilter"`
 	RemoteOnly     bool     `json:"remoteOnly"`
+	MaxConcurrency int      `json:"maxConcurrency"`
 }
 
 func ScrapeAllSources(
 	ctx context.Context,
 	config SearchConfig,
+	rdb *redis.Client,
 ) ([]models.Job, error) {
 	slog.Info("starting scrape", "keywords", config.Keywords)
 
-	adapterList := adapters.GetAdapters()
+	adapterList := adapters.GetAdapters(rdb)
 
 	req := models.ScrapeRequest{
 		Keywords:       config.Keywords,
@@ -31,16 +33,16 @@ func ScrapeAllSources(
 		JobTypes:       config.JobTypes,
 		TimeFilter:     config.TimeFilter,
 		RemoteOnly:     config.RemoteOnly,
+		MaxConcurrency: config.MaxConcurrency,
 	}
 
 	jobs := Run(ctx, adapterList, req)
 
-	deduped := dedup.DedupeJobs(jobs)
-
 	slog.Info("scrape finished",
-		"raw_jobs", len(jobs),
-		"deduped_jobs", len(deduped),
+		"total_jobs", len(jobs),
+		"keywords", len(config.Keywords),
+		"adapters", len(adapterList),
 	)
 
-	return deduped, nil
+	return jobs, nil
 }
