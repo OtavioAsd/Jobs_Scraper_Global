@@ -121,7 +121,10 @@
       "ScrapeResponse": {
         "type": "object",
         "properties": {
-          "jobs": { "type": "array", "items": { "$ref": "#/components/schemas/Job" } },
+          "jobs": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Job" }
+          },
           "total": { "type": "integer" },
           "cachedAt": { "type": "string", "format": "date-time" },
           "fromCache": { "type": "boolean" }

@@ -14,19 +14,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ScrapeRequest'
+              $ref: "#/components/schemas/ScrapeRequest"
       responses:
-        '200':
+        "200":
           description: Resultado do scrape
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScrapeResponse'
+                $ref: "#/components/schemas/ScrapeResponse"
   /api/keywords:
     get:
       summary: Retorna keywords carregadas
       responses:
-        '200':
+        "200":
           description: Lista de keywords
           content:
             application/json:
@@ -51,7 +51,7 @@ paths:
                   items:
                     type: string
       responses:
-        '202':
+        "202":
           description: Keywords enfileiradas/aceitas
 
 components:
@@ -118,7 +118,7 @@ components:
         jobs:
           type: array
           items:
-            $ref: '#/components/schemas/Job'
+            $ref: "#/components/schemas/Job"
         total:
           type: integer
         cachedAt:
