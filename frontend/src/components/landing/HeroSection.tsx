@@ -1,18 +1,60 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowRight, Play } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import googleLogo from "../../assets/google.png";
-import amazonLogo from "../../assets/amazon.png"
+import amazonLogo from "../../assets/amazon.png";
 import metaLogo from "../../assets/meta.svg";
 import uberLogo from "../../assets/uber.png";
 
 const COMPANIES = [
-  { name: "Google", logo: googleLogo},
-  { name: "Amazon", logo:amazonLogo},
+  { name: "Google", logo: googleLogo },
+  { name: "Amazon", logo: amazonLogo },
   { name: "Meta", logo: metaLogo },
   { name: "Uber", logo: uberLogo },
 ];
+
+// Componente Interno para gerar as estrelas de forma otimizada
+function StarsBackground() {
+  // Gera posições aleatórias fixas para evitar recalculado a cada render
+  const stars = useMemo(() => {
+    return Array.from({ length: 80 }).map((_, i) => ({
+      id: i,
+      top: `${Math.random() * 100}%`,
+      left: `${Math.random() * 100}%`,
+      size: Math.random() * 2 + 1, // Tamanhos entre 1px e 3px
+      delay: Math.random() * 5,
+      duration: Math.random() * 4 + 2,
+    }));
+  }, []);
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {stars.map((star) => (
+        <motion.div
+          key={star.id}
+          className="absolute rounded-full bg-emerald-800/40 dark:bg-white"
+          style={{
+            top: star.top,
+            left: star.left,
+            width: star.size,
+            height: star.size,
+          }}
+          animate={{
+            opacity: [0.2, 1, 0.2],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: star.duration,
+            repeat: Infinity,
+            delay: star.delay,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export function HeroSection() {
   const ref = useRef(null);
@@ -28,13 +70,17 @@ export function HeroSection() {
   return (
     <section ref={ref} className="relative min-h-[90vh] flex flex-col items-center justify-start pt-16 md:pt-24 pb-0 overflow-hidden bg-transparent font-sans">
 
+      {/* Container de Background Animado (Grid + Estrelas) */}
       <motion.div
         style={{ y: backgroundY }}
         className="absolute inset-0 pointer-events-none w-full h-[150%]
           bg-[linear-gradient(to_right,rgba(0,0,0,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.04)_1px,transparent_1px)]
           dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)]
           bg-[size:60px_60px]"
-      />
+      >
+        {/* Renderiza as estrelas dentro do container parallax do background */}
+        <StarsBackground />
+      </motion.div>
 
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-emerald-100/30 dark:bg-emerald-950/15 blur-[120px] rounded-full pointer-events-none" />
 
