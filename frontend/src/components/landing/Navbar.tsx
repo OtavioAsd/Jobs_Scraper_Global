@@ -101,8 +101,10 @@ export function Navbar() {
     >
       <div className="flex items-center w-full h-11 px-4">
 
-        <Link to="/" className="flex font-bold text-sm items-center gap-2 shrink-0 dark:text-foreground text-black">
-          Painel de vagas
+        <Link to="/" className="flex font-bold text-sm items-center gap shrink-0 dark:text-foreground text-black">
+          <span className="text-blue-500 font-light">&lt;</span>
+          Cand<span className="text-amber-500">!</span>Date<span className="text-purple-500">!</span>
+          <span className="text-blue-500 font-light">&gt;</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-2 mx-auto bg-gray-50/50 dark:bg-neutral-900/30 px-2 py-1 rounded-full border border-gray-100 dark:border-neutral-800/50">

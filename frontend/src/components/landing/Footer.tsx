@@ -9,17 +9,10 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           <div className="md:col-span-2">
 
-            <div className="flex items-center gap-3 mb-6">
-              <img
-                src={LogoBlack}
-                alt="Painel de Vagas"
-                className="h-16 w-auto block dark:hidden"
-              />
-              <img
-                src={LogoWhite}
-                alt="Painel de Vagas"
-                className="h-16 w-auto hidden dark:block"
-              />
+            <div className="flex items-center text-[30px] mb-6">
+              <span className="text-blue-500 font-light">&lt;</span>
+              Cand<span className="text-amber-500">!</span>Date<span className="text-purple-500">!</span>
+              <span className="text-blue-500 font-light">&gt;</span>
             </div>
 
             <p className="text-gray-500 dark:text-gray-400 max-w-sm mb-8 leading-relaxed">

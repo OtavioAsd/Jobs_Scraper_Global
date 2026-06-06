@@ -100,7 +100,9 @@ export function HeroSection() {
           transition={{ duration: 0.7, delay: 0.25 }}
           className="text-lg md:text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed font-medium"
         >
-          O Painel de Vagas varre dezenas de plataformas automaticamente, transforma candidatos em profissionais preparados e entrega as melhores oportunidades filtradas para você.
+          O <span className="text-blue-500 font-light">&lt;</span>
+          Cand<span className="text-amber-500">!</span>Date<span className="text-purple-500">!</span>
+          <span className="text-blue-500 font-light">&gt;</span> varre dezenas de plataformas automaticamente, transforma candidatos em profissionais preparados e entrega as melhores oportunidades filtradas para você.
         </motion.p>
 
         <motion.div
@@ -110,7 +112,7 @@ export function HeroSection() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
         >
           <Link
-            to="/app"
+            to="/login"
             className="group inline-flex items-center gap-2 bg-[#0c6b35] dark:bg-emerald-600 hover:bg-[#0a5a2d] dark:hover:bg-emerald-500 text-white font-semibold text-base py-3.5 px-8 rounded-full transition-all duration-300  hover:scale-[1.02]"
           >
             Comece Agora

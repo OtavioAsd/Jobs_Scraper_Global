@@ -30,7 +30,7 @@ export default function LeftSide() {
           <div className="bg-[#004726] dark:bg-emerald-600 p-2.5 rounded-xl text-white w-fit">
             <Search className="h-5 w-5" />
           </div>
-          <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 leading-tight">
+          <p className="text-xs font-bold text-neutral-800 dark:text-green-400 leading-tight">
             Encontre vagas e mentorias
           </p>
         </div>
@@ -39,7 +39,7 @@ export default function LeftSide() {
           <div className="bg-[#004726] dark:bg-emerald-600 p-2.5 rounded-xl text-white w-fit">
             <Bell className="h-5 w-5" />
           </div>
-          <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 leading-tight">
+          <p className="text-xs font-bold text-neutral-800 dark:text-green-400 leading-tight">
             Novas oportunidades
           </p>
         </div>
@@ -48,7 +48,7 @@ export default function LeftSide() {
           <div className="bg-[#004726] dark:bg-emerald-600 p-2.5 rounded-xl text-white w-fit">
             <TrendingUp className="h-5 w-5" />
           </div>
-          <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 leading-tight">
+          <p className="text-xs font-bold text-neutral-800 dark:text-green-400 leading-tight">
             Desenvolvimento profissional
           </p>
         </div>
