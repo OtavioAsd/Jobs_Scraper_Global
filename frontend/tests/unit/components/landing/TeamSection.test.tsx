@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -19,7 +20,7 @@ describe("TeamSection", () => {
   });
 
   it("renderiza lista da API, filtra bots e garante presença do Pedro", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue({
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => [
         {
@@ -54,7 +55,7 @@ describe("TeamSection", () => {
   });
 
   it("mantém fallback local quando API retorna resposta inválida", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue({
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ invalid: true }),
     } as any);
@@ -68,7 +69,7 @@ describe("TeamSection", () => {
 
   it("mantém fallback local e emite warning quando falha na API", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    vi.spyOn(global, "fetch").mockRejectedValue(new Error("offline"));
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
     render(<TeamSection />);
 
@@ -80,7 +81,7 @@ describe("TeamSection", () => {
   });
 
   it("atualiza avatar de PedroLucas1337 quando vem da API com avatar incorreto", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue({
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => [
         {
@@ -106,7 +107,7 @@ describe("TeamSection", () => {
   });
 
   it("trata erro HTTP com status nao ok", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue({
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 403,
     } as any);
@@ -120,7 +121,7 @@ describe("TeamSection", () => {
   });
 
   it("exibe plural de commits corretamente", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue({
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => [
         {
@@ -142,7 +143,7 @@ describe("TeamSection", () => {
   });
 
   it("exibe plural de commits quando > 1", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue({
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => [
         {
@@ -164,7 +165,7 @@ describe("TeamSection", () => {
   });
 
   it("nao atualiza contributors quando lista vazia", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue({
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => [],
     } as any);
