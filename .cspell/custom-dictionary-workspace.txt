@@ -11,10 +11,12 @@ abstraído
 acabar
 aceita
 aceitas
+aceitável
 acentos
 acesso
 achar
 acontece
+acontecia
 adaptado
 adaptador
 Adaptadores
@@ -43,6 +45,7 @@ além
 alfanuméricos
 algumas
 Alguns
+alicebob
 ALIMENTAÇÃO
 alimentar
 Alinhado
@@ -62,10 +65,13 @@ andybalholm
 angelacao
 Anotações
 anteriores
+antigas
 antigos
 apaga
+apareça
 aparece
 aparecem
+aparecer
 apertado
 aplica
 aplicado
@@ -106,6 +112,7 @@ automático
 autorizadas
 avaliação
 avaliado
+Avança
 Avançadas
 avisa
 baixa
@@ -156,6 +163,8 @@ cascadia
 casos
 catálogo
 CAUSA
+causar
+causava
 Centraliza
 centralizado
 Certificados
@@ -176,10 +185,13 @@ chega
 chegam
 chegar
 ciclo
+ciclos
+Ciclos
 cirúrgica
 clampeia
 clientes
 cobre
+cobrir
 colapsa
 colaterais
 coleções
@@ -195,11 +207,13 @@ compartilhado
 compilador
 complementar
 completa
+completamente
 complexa
 complexas
 Componentes
 comportamentos
 composta
+compostas
 composto
 Comunicação
 concluída
@@ -233,6 +247,7 @@ consumidos
 contador
 contagem
 contém
+contêm
 contenham
 contentful
 conteúdo
@@ -263,10 +278,12 @@ críticos
 cronômetro
 cruzada
 cuidado
+cujas
 cujo
 curta
 customuser
 daqui
+davecgh
 dedupe
 deduplica
 deduplicação
@@ -280,6 +297,7 @@ Definimos
 defval
 deixa
 dela
+deleção
 delega
 deleta
 deliveryoo
@@ -316,6 +334,7 @@ diacríticos
 diária
 diferenciar
 diferentes
+difflib
 digitou
 dimensões
 dinamicamente
@@ -373,6 +392,7 @@ enriquecimento
 enriquecimentos
 então
 entrada
+entrar
 envia
 enviado
 envie
@@ -405,6 +425,7 @@ esperada
 esperado
 esperar
 essa
+estar
 estático
 estavam
 estáveis
@@ -441,9 +462,13 @@ existente
 existentes
 existirem
 expectativa
+Expira
 expiração
+expiradas
 expirado
+expiram
 expirar
+expiraram
 expirarem
 expirou
 explicitamente
@@ -467,6 +492,7 @@ falsos
 fazem
 feitas
 ferramentas
+ficar
 filtra
 filtrada
 filtro
@@ -506,6 +532,7 @@ gerenciado
 gerenciar
 Globo
 goldmark
+gopkg
 goquery
 Grava
 gravar
@@ -545,6 +572,7 @@ implementam
 importa
 importador
 Importando
+importante
 importantes
 incluem
 inclui
@@ -555,10 +583,14 @@ independente
 independentemente
 Indexa
 indexação
+indexadas
+Indexados
+indexam
 indexar
 indica
 índice
 índices
+indiretamente
 indisponivel
 indisponível
 individuais
@@ -621,6 +653,7 @@ isolados
 isolar
 isso
 iterações
+janela
 joaosilva
 jobsglobal
 jobsglobalscraper
@@ -644,6 +677,7 @@ lerá
 letras
 libera
 limita
+limpeza
 limpos
 linha
 linhas
@@ -671,9 +705,11 @@ Mapeando
 mapeia
 marca
 marcado
+margem
 mastigada
 máximas
 Mczn
+mecanismo
 meia
 melhorar
 MELHORIA
@@ -695,6 +731,8 @@ Migrações
 milissegundos
 mínima
 mínimo
+miniredis
+Miniredis
 minúsculas
 Mockada
 mockado
@@ -730,6 +768,7 @@ normalizado
 normalizados
 normalizar
 Notificações
+novamente
 novos
 novousuario
 Npqgf
@@ -746,6 +785,7 @@ obtém
 obter
 omitido
 onde
+Opção
 opcionais
 Opcional
 opções
@@ -753,6 +793,9 @@ operação
 operacionais
 operações
 ordem
+Orfaos
+órfãos
+organicamente
 organização
 Origem
 origens
@@ -793,6 +836,7 @@ pendentes
 perfeitamente
 perfis
 performático
+permanente
 permite
 permitida
 permitidos
@@ -807,6 +851,7 @@ persistir
 pesquisa
 pesquisadas
 planetscale
+pmezard
 pôde
 poderem
 poderia
@@ -839,6 +884,7 @@ Preferências
 prefixo
 Prefixo
 prefs
+preparar
 presencial
 presente
 presentes
@@ -910,6 +956,7 @@ registrado
 registro
 registros
 regras
+reindexação
 rejeição
 rejeita
 rejeitar
@@ -920,7 +967,9 @@ RELATÓRIO
 relevantes
 remotas
 removendo
+removida
 removidas
+removido
 repetidas
 repositório
 reprocessamento
@@ -946,6 +995,7 @@ retornado
 retornam
 retornamos
 retornando
+retornaria
 retornos
 retornou
 reutiliza
@@ -954,6 +1004,7 @@ reutilizada
 reutilizaveis
 riotgames
 robinhood
+robustez
 rodam
 rotacionado
 rotativo
@@ -977,6 +1028,8 @@ seguros
 sejam
 semáforos
 Semáforos
+semanal
+semanas
 sendo
 Senhas
 Sênior
@@ -995,6 +1048,8 @@ serviços
 sess
 sessões
 setar
+sido
+significa
 silencia
 silenciosamente
 silencioso
@@ -1014,6 +1069,8 @@ sobrecarregar
 Sobrescreve
 sobrescrever
 sobrescrito
+Sobrevivente
+sobreviver
 sobrou
 sohohouse
 solicitado
@@ -1021,6 +1078,7 @@ SOLUÇÃO
 somente
 soql
 sozinhas
+stretchr
 subconjunto
 subfunções
 subir
@@ -1030,6 +1088,8 @@ sufixo
 sugeridos
 sujar
 sumário
+sumir
+sumisse
 sumiu
 supabase
 Suporte
@@ -1039,7 +1099,9 @@ Tabelas
 talvez
 tarefas
 temos
+temporária
 temporariamente
+temporárias
 tenha
 tenta
 tentativa
@@ -1060,6 +1122,7 @@ tipagem
 titulo
 tiver
 tocar
+tolerância
 topo
 transação
 trata
@@ -1077,6 +1140,7 @@ typeform
 Uguwk
 última
 ultrapassa
+ultrapassar
 única
 unicas
 únicas
@@ -1119,8 +1183,10 @@ vazia
 VAZIAS
 vazio
 vazios
+veem
 vercel
 verdade
+verificamos
 versões
 vezes
 viagem

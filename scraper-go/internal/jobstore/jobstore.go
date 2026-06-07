@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	jobTTL       = 72 * time.Hour
+	jobTTL       = 9 * 24 * time.Hour
 	indexKey     = "scraper:jobs:index"
 	jobKeyPrefix = "scraper:job:"
 )
@@ -69,7 +69,6 @@ func (s *Store) SaveBatch(ctx context.Context, jobs []models.Job) (int, error) {
 		pipe := s.rdb.Pipeline()
 		pipe.Set(ctx, jobKeyPrefix+id, payload, jobTTL)
 		pipe.SAdd(ctx, indexKey, id)
-		pipe.Expire(ctx, indexKey, jobTTL)
 
 		if _, err := pipe.Exec(ctx); err != nil {
 			return saved, fmt.Errorf("jobstore.SaveBatch: pipeline exec %q: %w", id, err)

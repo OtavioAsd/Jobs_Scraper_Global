@@ -92,34 +92,31 @@ func IndexJobsInValkey(ctx context.Context, rdb *redis.Client, jobs []models.Job
 		return
 	}
 
-	globalIndexKey := "scraper:jobs:index"
-	indexTTL := 72 * time.Hour
+	const (
+		globalIndexKey = "scraper:jobs:index"
+		// 9 dias: cobre o intervalo semanal com margem
+		// As vagas individuais (scraper:job:<id>) também têm 9 dias,
+		// então index e dados expiram na mesma janela
+		indexTTL = 9 * 24 * time.Hour
+	)
 
-	// Limpa os índices de keyword anteriores (composto + sub-termos)
-	for _, kw := range keywords {
-		sanitizedKw := strings.ToLower(strings.TrimSpace(kw))
-		if sanitizedKw == "" {
-			continue
-		}
-
-		normalizedForDel := strings.ReplaceAll(sanitizedKw, "/", " ")
-		normalizedForDel = strings.Join(strings.Fields(normalizedForDel), " ")
-		rdb.Del(ctx, fmt.Sprintf("scraper:jobs:keyword:%s", normalizedForDel))
-
-		for _, term := range strings.Fields(normalizedForDel) {
-			rdb.Del(ctx, fmt.Sprintf("scraper:jobs:keyword:%s", term))
-		}
+	// Monta os novos índices em chaves temporárias (sufixo :next)
+	// e só depois faz RENAME atômico — sem janela de vazio durante reindexação
+	type tempEntry struct {
+		tempKey  string
+		finalKey string
+		ids      []string
 	}
 
+	kwIndex := make(map[string][]string) // finalKey → []id
+
 	for _, job := range jobs {
-		// ✅ Usa o ID estável como membro de todos os Sets,
-		// igual ao que jobstore.SaveBatch faz — nunca a URL bruta
 		id := jobstore.StableID(&job)
 		if id == "" {
 			continue
 		}
 
-		// Índice global: apenas IDs (sem duplicar com URLs)
+		// Índice global: permanente, sem TTL
 		rdb.SAdd(ctx, globalIndexKey, id)
 
 		titleLower := strings.ToLower(job.Title)
@@ -134,7 +131,7 @@ func IndexJobsInValkey(ctx context.Context, rdb *redis.Client, jobs []models.Job
 			normalizedKw := strings.ReplaceAll(sanitizedKw, "/", " ")
 			subTerms := strings.Fields(normalizedKw)
 
-			// Keyword composta: indexa só se todos os sub-termos aparecem na vaga
+			// Keyword composta: todos os sub-termos precisam aparecer
 			matchAll := true
 			for _, term := range subTerms {
 				if !strings.Contains(titleLower, term) && !strings.Contains(descLower, term) {
@@ -145,24 +142,48 @@ func IndexJobsInValkey(ctx context.Context, rdb *redis.Client, jobs []models.Job
 
 			if matchAll {
 				fullKey := fmt.Sprintf("scraper:jobs:keyword:%s", strings.Join(subTerms, " "))
-				rdb.SAdd(ctx, fullKey, id)
-				rdb.Expire(ctx, fullKey, indexTTL)
+				kwIndex[fullKey] = append(kwIndex[fullKey], id)
 			}
 
-			// Sub-termos individuais: indexa cada um independentemente
+			// Sub-termos individuais
 			for _, term := range subTerms {
 				if term == "" {
 					continue
 				}
 				if strings.Contains(titleLower, term) || strings.Contains(descLower, term) {
 					termKey := fmt.Sprintf("scraper:jobs:keyword:%s", term)
-					rdb.SAdd(ctx, termKey, id)
-					rdb.Expire(ctx, termKey, indexTTL)
+					kwIndex[termKey] = append(kwIndex[termKey], id)
 				}
 			}
 		}
 	}
 
-	rdb.Expire(ctx, globalIndexKey, indexTTL)
-	slog.Info("Valkey invertido atualizado", "total_vagas", len(jobs))
+	// Publica os índices de keyword com RENAME atômico
+	// Fluxo: escreve em :next → RENAME :next → final → Expire no final
+	for finalKey, ids := range kwIndex {
+		tempKey := finalKey + ":next"
+
+		pipe := rdb.Pipeline()
+		pipe.Del(ctx, tempKey) // limpa eventual :next anterior
+		for _, id := range ids {
+			pipe.SAdd(ctx, tempKey, id)
+		}
+		pipe.Expire(ctx, tempKey, indexTTL)
+		if _, err := pipe.Exec(ctx); err != nil {
+			slog.Warn("IndexJobsInValkey: erro ao preparar chave temporária",
+				"key", tempKey, "error", err)
+			continue
+		}
+
+		// RENAME é atômico: clientes nunca veem chave vazia
+		if err := rdb.Rename(ctx, tempKey, finalKey).Err(); err != nil {
+			slog.Warn("IndexJobsInValkey: erro no RENAME",
+				"from", tempKey, "to", finalKey, "error", err)
+		}
+	}
+
+	slog.Info("Valkey índice invertido atualizado",
+		"keywords_indexadas", len(kwIndex),
+		"total_vagas", len(jobs),
+	)
 }
