@@ -39,6 +39,14 @@ const INITIAL_TEAM: Contributor[] = [
     html_url: "https://github.com/thalitat",
     contributions: 0,
     type: "User"
+  },
+  {
+    id: 999999998,
+    login: "jeremiassnts",
+    avatar_url: "https://github.com/jeremiassnts.png",
+    html_url: "https://github.com/jeremiassnts",
+    contributions: 0,
+    type: "User"
   }
 ];
 
@@ -51,7 +59,7 @@ export default function TeamSection() {
   useEffect(() => {
     fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contributors`, {
       headers: {
-        'Accept': 'application/vnd.github.v3+json',
+        Accept: 'application/vnd.github.v3+json',
       }
     })
       .then((res) => {
@@ -64,17 +72,26 @@ export default function TeamSection() {
         const realUsers = (data as Contributor[])
           .filter(user => user.type === 'User')
           .map(user => {
-            if (user.login.toLowerCase() === "pedrolucas1337") {
+            const login = user.login.toLowerCase();
+
+            if (login === "pedrolucas1337") {
               return {
                 ...user,
                 avatar_url: "https://github.com/PedroLucas1337.png"
               };
             }
 
-            if (user.login.toLowerCase() === "thalitat") {
+            if (login === "thalitat") {
               return {
                 ...user,
                 avatar_url: "https://avatars.githubusercontent.com/u/110640572?v=4"
+              };
+            }
+
+            if (login === "jeremiassnts") {
+              return {
+                ...user,
+                avatar_url: "https://github.com/jeremiassnts.png"
               };
             }
 
@@ -97,6 +114,14 @@ export default function TeamSection() {
             html_url: "https://github.com/thalitat",
             contributions: 0,
             type: "User"
+          },
+          {
+            id: 999999998,
+            login: "jeremiassnts",
+            avatar_url: "https://github.com/jeremiassnts.png",
+            html_url: "https://github.com/jeremiassnts",
+            contributions: 0,
+            type: "User"
           }
         ];
 
@@ -110,27 +135,45 @@ export default function TeamSection() {
           }
         });
 
-        if (realUsers.length > 0) {
-          setContributors(realUsers);
-        }
+        const merged = [...INITIAL_TEAM, ...realUsers];
+
+        const unique = merged.filter(
+          (user, index, self) =>
+            index === self.findIndex(
+              u => u.login.toLowerCase() === user.login.toLowerCase()
+            )
+        );
+
+        setContributors(unique);
       })
       .catch((err) => {
-        console.warn("GitHub API offline ou limitada. Mantendo lista local:", err.message);
+        console.warn(
+          "GitHub API offline ou limitada. Mantendo lista local:",
+          err.message
+        );
       });
   }, []);
 
   return (
-    <section id="time" className="flex flex-col text-center justify-center items-center py-16 px-4 w-full min-h-[400px]">
+    <section
+      id="time"
+      className="flex flex-col text-center justify-center items-center py-16 px-4 w-full min-h-[400px]"
+    >
       <div className="max-w-6xl w-full">
         <h2 className="text-3xl font-bold mb-2 text-gray-800 dark:text-white">
-          Nosso <span className="bg-gradient-to-r from-blue-600 to-violet-500 bg-clip-text text-transparent">Time</span> de Contribuidores
+          Nosso{" "}
+          <span className="bg-gradient-to-r from-blue-600 to-violet-500 bg-clip-text text-transparent">
+            Time
+          </span>{" "}
+          de Contribuidores
         </h2>
 
         <div className="text-gray-500 dark:text-gray-400 mb-10 text-sm sm:text-base">
           Conheça as mentes brilhantes por trás do{" "}
-          <span className='font-bold text-gray-800 dark:text-white inline-block sm:inline'>
+          <span className="font-bold text-gray-800 dark:text-white inline-block sm:inline">
             <span className="text-blue-500 font-bold">&lt;</span>
-            Cand<span className="text-amber-500 font-bold">!</span>Date<span className="text-purple-500 font-bold">!</span>
+            Cand<span className="text-amber-500 font-bold">!</span>Date
+            <span className="text-purple-500 font-bold">!</span>
             <span className="text-blue-500 font-bold">&gt;</span>
           </span>
         </div>
@@ -158,7 +201,6 @@ export default function TeamSection() {
             {contributors.map((user) => (
               <SwiperSlide key={user.id} className="h-full inline-block">
                 <div className="flex flex-col items-center p-6 border border-gray-100 dark:border-zinc-800/80 rounded-2xl text-center bg-white dark:bg-zinc-900/40 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300 min-h-[260px] h-full justify-between">
-                  
                   <div className="flex flex-col items-center w-full">
                     <img
                       src={user.avatar_url}
@@ -177,6 +219,8 @@ export default function TeamSection() {
                         ? "QA"
                         : user.login.toLowerCase() === "thalitat"
                         ? "UX/UI Designer"
+                        : user.login.toLowerCase() === "jeremiassnts"
+                        ? "Engenheiro de Software Senior"
                         : `${user.contributions} ${user.contributions === 1 ? 'commit' : 'commits'}`}
                     </p>
                   </div>
@@ -188,7 +232,7 @@ export default function TeamSection() {
                     className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:opacity-90 text-white flex items-center justify-center text-sm font-medium rounded-lg transition-all duration-200 gap-2 shadow-sm"
                   >
                     Ver Perfil
-                    <Github className='h-4 w-4' />
+                    <Github className="h-4 w-4" />
                   </a>
                 </div>
               </SwiperSlide>
