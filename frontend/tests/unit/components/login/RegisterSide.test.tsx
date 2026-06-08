@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
@@ -107,7 +108,7 @@ describe("RegisterSide", () => {
         email: "bene@teste.com",
         phone: "+5534999999999",
         password: "123456",
-        cpf: "12345678901", // componente envia sem formatação (.replace(/\D/g, ""))
+        cpf: "12345678901",
       });
     });
   });
