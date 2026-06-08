@@ -1,9 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import "@testing-library/jest-dom/vitest";
 
 vi.mock("@unpic/react", () => ({
   Image: (props: any) => <img {...props} alt={props.alt} />,
+}));
+
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => vi.fn(),
 }));
 
 import LeftSide from "@/components/login/LeftSide";

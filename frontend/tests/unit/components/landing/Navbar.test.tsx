@@ -3,6 +3,17 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const mockObserve = vi.fn();
+const mockDisconnect = vi.fn();
+const mockUnobserve = vi.fn();
+
+vi.stubGlobal("IntersectionObserver", class {
+  observe = mockObserve;
+  unobserve = mockUnobserve;
+  disconnect = mockDisconnect;
+  constructor(public callback: IntersectionObserverCallback) {}
+});
+
 const themeState = vi.hoisted(() => ({
   resolvedTheme: "light",
   toggleTheme: vi.fn(),
@@ -21,6 +32,7 @@ describe("Navbar", () => {
   beforeEach(() => {
     themeState.resolvedTheme = "light";
     themeState.toggleTheme.mockClear();
+    mockObserve.mockClear();
     document.body.innerHTML = "";
 
     ["features", "time", "how-it-works", "status"].forEach((id) => {
@@ -110,16 +122,12 @@ describe("Navbar", () => {
 
   it("retorna quando elemento nao existe ao clicar em link", () => {
     render(
-          <MemoryRouter>
-              <Navbar />
-          </MemoryRouter>
-      );
-
+      <MemoryRouter>
+        <Navbar />
+      </MemoryRouter>,
+    );
     const featureSection = document.getElementById("features");
-    if (featureSection) {
-      featureSection.remove();
-    }
-
+    if (featureSection) featureSection.remove();
     const featureLink = screen.getAllByRole("link", { name: /funcionalidades/i })[0];
     fireEvent.click(featureLink);
 

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import "@testing-library/jest-dom/vitest";
 
 vi.mock("@unpic/react", () => ({
   Image: (props: any) => <img {...props} alt={props.alt} />,
@@ -13,13 +14,28 @@ vi.mock("framer-motion", () => ({
   },
 }));
 
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => vi.fn(),
+}));
+
+const mockLogin = vi.fn();
+vi.mock("@/context/AuthContext", () => ({
+  useAuth: () => ({
+    login: mockLogin,
+  }),
+}));
+
+vi.mock("@/services/api", () => ({
+  api: {
+    get: vi.fn(),
+  },
+}));
+
 import RigthSide from "@/components/login/RigthSide";
 
 describe("RigthSide", () => {
-  const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-
   beforeEach(() => {
-    logSpy.mockClear();
+    mockLogin.mockClear();
   });
 
   it("renderiza formulário e alterna visibilidade da senha", () => {
@@ -54,14 +70,14 @@ describe("RigthSide", () => {
     expect(screen.getByText(/pelo menos 6 caracteres/i)).toBeInTheDocument();
   });
 
-  it("envia formulário valido", () => {
+  it("envia formulário valido", async () => {
+    mockLogin.mockResolvedValueOnce(undefined);
     render(<RigthSide />);
 
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "qa@teste.com" } });
     fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-
-    expect(logSpy).toHaveBeenCalledWith("Formulário válido!", {
+    expect(mockLogin).toHaveBeenCalledWith({
       email: "qa@teste.com",
       password: "123456",
     });

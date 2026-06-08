@@ -3,6 +3,13 @@ import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
+vi.stubGlobal("IntersectionObserver", class {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+  constructor(public callback: IntersectionObserverCallback) {}
+});
+
 vi.mock("@/hooks/useTheme", () => ({
   useTheme: () => ({ resolvedTheme: "light", toggleTheme: vi.fn() }),
 }));
@@ -12,15 +19,7 @@ vi.mock("@/hooks/useJobsData", () => ({
     files: [{ file: "vagas.xlsx" }],
     selectedFile: "vagas.xlsx",
     setSelectedFile: vi.fn(),
-    jobs: [
-      {
-        titulo: "Dev",
-        empresa: "ACME",
-        local: "BR",
-        palavra: "React",
-        link: "x",
-      },
-    ],
+    jobs: [{ titulo: "Dev", empresa: "ACME", local: "BR", palavra: "React", link: "x" }],
     meta: { file: "vagas.xlsx", modifiedAt: 1, total: 1 },
     loading: false,
     scraping: false,
@@ -37,15 +36,7 @@ vi.mock("@/hooks/useJobsFiltering", () => ({
     keywordFilter: [],
     setKeywordFilter: vi.fn(),
     keywords: ["React"],
-    filteredJobs: [
-      {
-        titulo: "Dev",
-        empresa: "ACME",
-        local: "BR",
-        palavra: "React",
-        link: "x",
-      },
-    ],
+    filteredJobs: [{ titulo: "Dev", empresa: "ACME", local: "BR", palavra: "React", link: "x" }],
   }),
 }));
 
@@ -57,15 +48,7 @@ vi.mock("@/hooks/useJobsPagination", () => ({
     setPageSize: vi.fn(),
     resetPagination: vi.fn(),
     totalPages: 1,
-    paginatedJobs: [
-      {
-        titulo: "Dev",
-        empresa: "ACME",
-        local: "BR",
-        palavra: "React",
-        link: "x",
-      },
-    ],
+    paginatedJobs: [{ titulo: "Dev", empresa: "ACME", local: "BR", palavra: "React", link: "x" }],
   }),
 }));
 
@@ -73,22 +56,17 @@ import App from "@/App";
 
 describe("App", () => {
   it("renderiza a landing page após o loading", () => {
-    vi.useFakeTimers();
-
+    vi.useFakeTimers()
     try {
       render(
         <MemoryRouter initialEntries={["/"]}>
           <App />
         </MemoryRouter>
-      );
-
+      )
       act(() => {
         vi.runAllTimers();
       });
-
-      expect(
-        screen.getAllByText(/funcionalidades/i).length
-      ).toBeGreaterThan(0);
+      expect(screen.getAllByText(/funcionalidades/i).length).toBeGreaterThan(0);
     } finally {
       vi.useRealTimers();
     }
