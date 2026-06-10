@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // =====================
 // MOCKS
@@ -37,28 +37,31 @@ vi.mock("react-phone-number-input", () => ({
   ),
 }));
 
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => mockNavigate,
+}));
+
+const mockApiPost = vi.fn();
+const mockApiGet = vi.fn();
+vi.mock("@/services/api", () => ({
+  api: {
+    post: (...args: any[]) => mockApiPost(...args),
+    get: (...args: any[]) => mockApiGet(...args),
+  },
+}));
+
 import RegisterSide from "@/components/login/RegisterSide";
 
 // =====================
 // TEST SUITE
 // =====================
 describe("RegisterSide", () => {
-  const originalLocation = window.location;
 
   beforeEach(() => {
-    mockRegister.mockReset();
-
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: { href: "" },
-    });
-  });
-
-  afterEach(() => {
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: originalLocation,
-    });
+    mockApiPost.mockClear();
+    mockApiGet.mockClear();
+    mockNavigate.mockClear();
   });
 
   it("renderiza formulário e alterna visibilidade da senha", () => {
