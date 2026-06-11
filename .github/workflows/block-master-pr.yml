@@ -1,0 +1,38 @@
+name: Block PRs to Master
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  block:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check source branch and block if not develop
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sourceBranch = context.payload.pull_request.head.ref;
+            
+            if (sourceBranch === 'develop') {
+              console.log(`✅ PR de ${sourceBranch} para master permitido.`);
+              return;
+            }
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `❌ Pull Requests diretamente para **master** são permitidos apenas a partir da branch **develop**.  
+                     Origem detectada: \`${sourceBranch}\`.  
+                     Por favor, primeiro faça o merge da sua branch na \`develop\` e então abra um PR de \`develop\` para \`master\`.`
+            });
+            
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              state: 'closed'
+            });
